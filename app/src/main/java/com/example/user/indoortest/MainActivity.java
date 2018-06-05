@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.Region;
+import android.location.Address;
 import android.location.Location;
 import android.location.LocationListener;
 import android.os.Bundle;
@@ -38,6 +39,7 @@ import android.location.LocationManager;
 import com.indooratlas.android.sdk.IARegion;
 import com.indooratlas.android.sdk.resources.IAFloorPlan;
 
+import com.indooratlas.android.sdk.resources.IALatLng;
 import com.indooratlas.android.sdk.resources.IALocationListenerSupport;
 import com.indooratlas.android.sdk.resources.IAResourceManager;
 import com.indooratlas.android.sdk.resources.IAResult;
@@ -95,8 +97,9 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     private IALocationManager mLocationManager;
     private Polyline mPath;
     private Polyline mPathCurrent;
-    private Button getlocation;
+    private Button startnavigating;
     private TextView showLatLng;
+    private TextView showDestination;
 
 
     //顯示座標、樓層
@@ -119,8 +122,8 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 
         // prevent the screen going to sleep while app is on foreground避免手機進入待機模式
         findViewById(android.R.id.content).setKeepScreenOn(true);
-        mIALocationManager = IALocationManager.create(this);
-        mResourceManager = IAResourceManager.create(this);
+        mIALocationManager = IALocationManager.create(MainActivity.this);
+        mResourceManager = IAResourceManager.create(MainActivity.this);
 
         startListeningPlatformLocations();
 
@@ -136,26 +139,21 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         String[] neededPermissions = {
                 Manifest.permission.CHANGE_WIFI_STATE,
                 Manifest.permission.ACCESS_WIFI_STATE,
+                //讓 API 使用 WiFi 或手機基地台訊號資料（或兩者）來判斷裝置的位置。
                 Manifest.permission.ACCESS_COARSE_LOCATION
         };
-        ActivityCompat.requestPermissions( this, neededPermissions, CODE_PERMISSIONS);
-        getlocation=(Button)findViewById( R.id.getlocation );
+        ActivityCompat.requestPermissions( MainActivity.this, neededPermissions, CODE_PERMISSIONS);
+
+        //當前位置
         showLatLng=(TextView)findViewById( R.id.showLatLng );
-        getlocation.setOnClickListener(new Button.OnClickListener(){
+        //終點位置
+        showDestination=(TextView)findViewById( R.id.showDestination );
 
-            @Override
-
-            public void onClick(View v) {
-
-             showLatLng.setText( "your current position:" );
-
-            }
-
-        });
-
-
+        //按鈕為開始導航
+        startnavigating=(Button)findViewById( R.id.startnavigating );
 
     }
+
 
 
     @Override
@@ -175,6 +173,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                 Log.d( TAG, "Latitude: " + location.getLatitude() );
                 Log.d( TAG, "Longitude: " + location.getLongitude() );
                 Log.d( TAG, "Floor number: " + location.getFloorLevel() );
+                showLatLng.setText( "Your current venue:"+location.getLatitude()+","+location.getLongitude() );
             }
 
             @Override
@@ -184,7 +183,6 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                 Log.d( TAG, "onStatusChanged: " );
             }
         };
-
 
     }
 
@@ -283,6 +281,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
             mWayfinder.close();
         }
     }
+
 
     @Override
     protected void onResume() {
