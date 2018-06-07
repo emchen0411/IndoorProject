@@ -11,12 +11,12 @@
         android:layout_height="wrap_content"
         android:theme="@style/AppTheme.AppBarOverlay"
 
-        >
+        android:visibility="visible">
 
         <TextView
             android:id="@+id/showLatLng"
             android:layout_width="match_parent"
-            android:layout_height="30dp"
+            android:layout_height="45dp"
             android:layout_gravity="left|center_vertical"
             android:background="#FFCCCC"
             android:textColor="@android:color/black"
@@ -27,7 +27,7 @@
         <TextView
             android:id="@+id/showDestination"
             android:layout_width="match_parent"
-            android:layout_height="30dp"
+            android:layout_height="45dp"
             android:layout_gravity="left|center_vertical"
             android:background="	#99BBFF"
             android:textColor="@android:color/black" />

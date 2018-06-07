@@ -6,8 +6,6 @@ import android.content.pm.PackageManager;
 
 import android.content.res.Resources;
 import android.graphics.Color;
-import android.graphics.Region;
-import android.location.Address;
 import android.location.Location;
 import android.location.LocationListener;
 import android.os.Bundle;
@@ -18,7 +16,6 @@ import android.support.v7.app.AppCompatActivity;
 
 import android.util.Log;
 
-import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -39,7 +36,6 @@ import android.location.LocationManager;
 import com.indooratlas.android.sdk.IARegion;
 import com.indooratlas.android.sdk.resources.IAFloorPlan;
 
-import com.indooratlas.android.sdk.resources.IALatLng;
 import com.indooratlas.android.sdk.resources.IALocationListenerSupport;
 import com.indooratlas.android.sdk.resources.IAResourceManager;
 import com.indooratlas.android.sdk.resources.IAResult;
@@ -58,7 +54,6 @@ import com.google.android.gms.maps.model.GroundOverlay;
 import com.squareup.picasso.Picasso;
 
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
-import android.widget.Button;
 
 import android.widget.TextView;
 
@@ -148,9 +143,11 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         showLatLng=(TextView)findViewById( R.id.showLatLng );
         //終點位置
         showDestination=(TextView)findViewById( R.id.showDestination );
-
+        //取自indooratlas的 floor plam id
+        fetchFloorPlan("e4c4db63-5ef1-4ae6-ae6b-22e0507a3973");
         //按鈕為開始導航
         startnavigating=(Button)findViewById( R.id.startnavigating );
+
 
     }
 
@@ -164,7 +161,8 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     }
 
     private void setupListener() {
-        mIALocationListener = new IALocationListener() {
+        mIALocationListener = new IALocationListener()
+ {
 
             // Called when the location has changed.
             @Override
@@ -174,6 +172,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                 Log.d( TAG, "Longitude: " + location.getLongitude() );
                 Log.d( TAG, "Floor number: " + location.getFloorLevel() );
                 showLatLng.setText( "Your current venue:"+location.getLatitude()+","+location.getLongitude() );
+                showLocationCircle( new LatLng( location.getLatitude(),location.getLongitude() ),15.0f );
             }
 
             @Override
@@ -181,14 +180,15 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                 String TAG = "Status";
                 Log.d( TAG, "onStatusChanged: 被呼叫了" );
                 Log.d( TAG, "onStatusChanged: " );
+
             }
         };
 
     }
 
-
     private void fetchFloorPlan(String id) {
         // Cancel pending operation, if any
+
         if (mPendingAsyncResult != null && !mPendingAsyncResult.isCancelled()) {
             mPendingAsyncResult.cancel();
         }
@@ -199,7 +199,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                 @Override
                 public void onResult(IAResult<IAFloorPlan> result) {
                     final String TAG="fetchFloorPlan";
-                    Log.d(TAG, "onResult: %s"+result);
+                    Log.d(TAG, " 下載地圖"+result);
 
                     if (result.isSuccess()) {
                         handleFloorPlanChange(result.getResult());
@@ -221,6 +221,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                 .load(newFloorPlan.getUrl())
                 .into(mFloorPlanImage);
     }
+
 //floor detection確認樓層
     private IARegion.Listener mRegionListener = new IARegion.Listener() {
         IARegion mCurrentFloorPlan = null;
@@ -319,7 +320,8 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 
 
 
-    private void showLocationCircle(LatLng center, double accuracyRadius) {
+    private   void  showLocationCircle(LatLng center, double accuracyRadius) {
+       String TAG="LocationCircle";
         if (mCircle == null) {
             // location can received before map is initialized, ignoring those updates
             if (mMap != null) {
@@ -336,7 +338,9 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
             // move existing markers position to received location
             mCircle.setCenter(center);
             mCircle.setRadius(accuracyRadius);
+            Log.d( TAG,"你的位置:" );
         }
+
     }
 
 
@@ -377,7 +381,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                 mMap.animateCamera( CameraUpdateFactory.newLatLngZoom(center, 17.5f));
                 mCameraPositionNeedsUpdating = false;
             }
-        }
+        };
 
 
         /**
