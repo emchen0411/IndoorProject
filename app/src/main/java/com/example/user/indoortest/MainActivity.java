@@ -1,6 +1,7 @@
 package com.example.user.indoortest;
 
 import android.Manifest;
+import android.app.Fragment;
 import android.content.Context;
 import android.content.pm.PackageManager;
 
@@ -12,10 +13,14 @@ import android.os.Bundle;
 import android.os.Looper;
 
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
 
 import android.util.Log;
 
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -96,6 +101,11 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     private TextView showLatLng;
     private TextView showDestination;
 
+    private android.app.FragmentManager fmgr;
+    private android.app.FragmentTransaction fragmentTransaction;
+    private ViewGroup container;
+    private Fragment Page1Fragment;
+
 
     //顯示座標、樓層
     private void startListeningPlatformLocations() {
@@ -114,23 +124,15 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         //定期登錄使用者的位置
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         // prevent the screen going to sleep while app is on foreground避免手機進入待機模式
         findViewById(android.R.id.content).setKeepScreenOn(true);
         mIALocationManager = IALocationManager.create(MainActivity.this);
         mResourceManager = IAResourceManager.create(MainActivity.this);
-
         startListeningPlatformLocations();
-
         mFloorPlanImage = (ImageView) findViewById(R.id.image);
-
-
         setupListener();
-
         mIALocationManager.registerRegionListener(mRegionListener);
-
         final int CODE_PERMISSIONS = 1;
-
         String[] neededPermissions = {
                 Manifest.permission.CHANGE_WIFI_STATE,
                 Manifest.permission.ACCESS_WIFI_STATE,
@@ -138,19 +140,35 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                 Manifest.permission.ACCESS_COARSE_LOCATION
         };
         ActivityCompat.requestPermissions( MainActivity.this, neededPermissions, CODE_PERMISSIONS);
-
         //當前位置
         showLatLng=(TextView)findViewById( R.id.showLatLng );
         //終點位置
         showDestination=(TextView)findViewById( R.id.showDestination );
         //取自indooratlas的 floor plam id
-        fetchFloorPlan("e4c4db63-5ef1-4ae6-ae6b-22e0507a3973");
+//        fetchFloorPlan("e4c4db63-5ef1-4ae6-ae6b-22e0507a3973");
         //按鈕為開始導航
         startnavigating=(Button)findViewById( R.id.startnavigating );
 
-
+        //取得container，作為容器使用
+        container=(ViewGroup)findViewById( R.id.container );
+        //取得FragmentManager物件實體
+        fmgr=getFragmentManager();
+        //建立1個Fragment物件實體
+        Page1Fragment=new Page1Fragment();
+        //取得交易物件
+        fragmentTransaction=fmgr.beginTransaction();
+        //初始加入第一頁，並與container結合
+        fragmentTransaction.add( R.id.container,Page1Fragment);
+        //實現動作程序
+        fragmentTransaction.commit();
     }
 
+    public void changeToPage1(View view)
+    {
+    fragmentTransaction=fmgr.beginTransaction();
+    fragmentTransaction.replace( R.id.container,Page1Fragment );
+    fragmentTransaction.commit();
+    }
 
 
     @Override
@@ -186,33 +204,33 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 
     }
 
-    private void fetchFloorPlan(String id) {
-        // Cancel pending operation, if any
-
-        if (mPendingAsyncResult != null && !mPendingAsyncResult.isCancelled()) {
-            mPendingAsyncResult.cancel();
-        }
-
-        mPendingAsyncResult = mResourceManager.fetchFloorPlanWithId(id);
-        if (mPendingAsyncResult != null) {
-            mPendingAsyncResult.setCallback(new IAResultCallback<IAFloorPlan>() {
-                @Override
-                public void onResult(IAResult<IAFloorPlan> result) {
-                    final String TAG="fetchFloorPlan";
-                    Log.d(TAG, " 下載地圖"+result);
-
-                    if (result.isSuccess()) {
-                        handleFloorPlanChange(result.getResult());
-                    } else {
-                        // do something with error
-                        Toast.makeText( MainActivity.this,
-                                "loading floor plan failed: " + result.getError(), Toast.LENGTH_LONG)
-                                .show();
-                    }
-                }
-            }, Looper.getMainLooper()); // deliver callbacks in main thread
-        }
-    }
+//    private void fetchFloorPlan(String id) {
+//        // Cancel pending operation, if any
+//
+//        if (mPendingAsyncResult != null && !mPendingAsyncResult.isCancelled()) {
+//            mPendingAsyncResult.cancel();
+//        }
+//
+//        mPendingAsyncResult = mResourceManager.fetchFloorPlanWithId(id);
+//        if (mPendingAsyncResult != null) {
+//            mPendingAsyncResult.setCallback(new IAResultCallback<IAFloorPlan>() {
+//                @Override
+//                public void onResult(IAResult<IAFloorPlan> result) {
+//                    final String TAG="fetchFloorPlan";
+//                    Log.d(TAG, " 下載地圖"+result);
+//
+//                    if (result.isSuccess()) {
+//                        handleFloorPlanChange(result.getResult());
+//                    } else {
+//                        // do something with error
+//                        Toast.makeText( MainActivity.this,
+//                "loading floor plan failed: " + result.getError(), Toast.LENGTH_LONG)
+//                .show();
+//    }
+//}
+//            }, Looper.getMainLooper()); // deliver callbacks in main thread
+//                    }
+//    }
 
 
     //If we don’t have any errors, download the image.
