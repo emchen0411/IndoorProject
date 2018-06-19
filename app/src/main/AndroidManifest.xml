@@ -14,11 +14,18 @@
     <uses-feature
         android:name="android.hardware.wifi"
         android:required="true" />
+    <uses-feature
+        android:glEsVersion="0x00020000"
+        android:required="true"/>
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+
+
 
     <application>
         <meta-data
@@ -28,6 +35,11 @@
             android:name="com.indooratlas.android.sdk.API_SECRET"
             android:value="mCTeQ/CusdSV8L5VitmGe5duH1TVl6K1TtiwtApsvDilLWD1aHr5P8LFZEsswPcx2CYQ5pIFcQkGdXaIPtdPQCQPRdhdFh0vqsIcjuHxjRhSUWzKakfvi/Wl/WzVpg==" />
 
+        <!--Maps Android key-->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyAjZWl7Jzfn03Pb2yvvNOKTsobZ_cVZ9r8"/>
+        <!--Maps-->
         <activity
             android:name=".MainActivity"
             android:label="@string/title_activity_main"

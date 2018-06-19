@@ -30,6 +30,7 @@ dependencies {
 
     implementation 'com.google.android.gms:play-services-maps:8.1.0'
     implementation 'com.google.maps.android:android-maps-utils:0.3.+'
+    implementation 'com.google.android.gms:play-services:8.3.0'
     implementation 'com.indooratlas.android:indooratlas-android-sdk:2.7.0@aar'
     implementation 'com.squareup.picasso:picasso:2.71828'
     implementation 'com.indooratlas.android:indooratlas-android-wayfinding:2.7.0@aar'
