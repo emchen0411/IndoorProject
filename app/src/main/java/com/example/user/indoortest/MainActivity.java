@@ -6,12 +6,15 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 
 import android.content.res.Resources;
+import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.location.LocationListener;
 import android.os.Bundle;
 import android.os.Looper;
 
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
@@ -26,7 +29,9 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -41,6 +46,7 @@ import android.location.LocationManager;
 import com.indooratlas.android.sdk.IARegion;
 import com.indooratlas.android.sdk.resources.IAFloorPlan;
 
+import com.indooratlas.android.sdk.resources.IALatLng;
 import com.indooratlas.android.sdk.resources.IALocationListenerSupport;
 import com.indooratlas.android.sdk.resources.IAResourceManager;
 import com.indooratlas.android.sdk.resources.IAResult;
@@ -57,6 +63,8 @@ import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.GroundOverlay;
 import com.squareup.picasso.Picasso;
+import com.squareup.picasso.RequestCreator;
+import com.squareup.picasso.Target;
 
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 
@@ -105,6 +113,8 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     private android.app.FragmentTransaction fragmentTransaction;
     private ViewGroup container;
     private Fragment Page1Fragment;
+    private Target mLoadTarget;
+    private int MAX_DIMENSION=2048;
 
 
     //顯示座標、樓層
@@ -131,7 +141,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         startListeningPlatformLocations();
         mFloorPlanImage = (ImageView) findViewById(R.id.image);
         setupListener();
-        mIALocationManager.registerRegionListener(mRegionListener);
+//        mIALocationManager.registerRegionListener(mRegionListener);
         final int CODE_PERMISSIONS = 1;
         String[] neededPermissions = {
                 Manifest.permission.CHANGE_WIFI_STATE,
@@ -144,8 +154,9 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         showLatLng=(TextView)findViewById( R.id.showLatLng );
         //終點位置
         showDestination=(TextView)findViewById( R.id.showDestination );
-        //取自indooratlas的 floor plam id
+        //取自indooratlas的 floor plan id
 //        fetchFloorPlan("e4c4db63-5ef1-4ae6-ae6b-22e0507a3973");
+
         //按鈕為開始導航
         startnavigating=(Button)findViewById( R.id.startnavigating );
 
@@ -204,33 +215,105 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 
     }
 
-//    private void fetchFloorPlan(String id) {
-//        // Cancel pending operation, if any
-//
-//        if (mPendingAsyncResult != null && !mPendingAsyncResult.isCancelled()) {
-//            mPendingAsyncResult.cancel();
-//        }
-//
-//        mPendingAsyncResult = mResourceManager.fetchFloorPlanWithId(id);
-//        if (mPendingAsyncResult != null) {
-//            mPendingAsyncResult.setCallback(new IAResultCallback<IAFloorPlan>() {
-//                @Override
-//                public void onResult(IAResult<IAFloorPlan> result) {
-//                    final String TAG="fetchFloorPlan";
-//                    Log.d(TAG, " 下載地圖"+result);
-//
-//                    if (result.isSuccess()) {
-//                        handleFloorPlanChange(result.getResult());
-//                    } else {
-//                        // do something with error
-//                        Toast.makeText( MainActivity.this,
-//                "loading floor plan failed: " + result.getError(), Toast.LENGTH_LONG)
-//                .show();
-//    }
-//}
-//            }, Looper.getMainLooper()); // deliver callbacks in main thread
-//                    }
-//    }
+    private void fetchFloorPlan(String id) {
+        // Cancel pending operation, if any
+
+        if (mPendingAsyncResult != null && !mPendingAsyncResult.isCancelled()) {
+            mPendingAsyncResult.cancel();
+        }
+
+        mPendingAsyncResult = mResourceManager.fetchFloorPlanWithId(id);
+        if (mPendingAsyncResult != null) {
+            mPendingAsyncResult.setCallback(new IAResultCallback<IAFloorPlan>() {
+                @Override
+                public void onResult(IAResult<IAFloorPlan> result) {
+                    final String TAG="fetchFloorPlan";
+                    Log.d(TAG, " 下載地圖"+result);
+
+                    if (result.isSuccess()) {
+                        fetchFloorPlanBitmap(result.getResult());
+                    } else {
+                        // do something with error
+                        Log.d( TAG, "onResult: " + "loading floor plan failed: " + result.getError());
+                        Toast.makeText( MainActivity.this,
+                "loading floor plan failed: " + result.getError(), Toast.LENGTH_LONG)
+                .show();
+                    }
+                }
+            }, Looper.getMainLooper()); // deliver callbacks in main thread
+                    }
+    }
+
+    /**
+     * Download floor plan using Picasso library.
+     */
+    private void fetchFloorPlanBitmap(final IAFloorPlan floorPlan) {
+
+        final String url = floorPlan.getUrl();
+
+        if (mLoadTarget == null) {
+            mLoadTarget = new Target() {
+
+                @Override
+                public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
+                    String TAG="BitmapLoaded";
+                    Log.d(TAG, "地圖下載中 " + bitmap.getWidth() + "x"
+                            + bitmap.getHeight());
+                    setupGroundOverlay(floorPlan, bitmap);
+                }
+
+                @Override
+                public void onBitmapFailed(Exception e, Drawable errorDrawable) {
+                    Toast.makeText( MainActivity.this,
+                            "Failed to load bitmap " , Toast.LENGTH_LONG)
+                            .show();
+                    mOverlayFloorPlan = null;
+                }
+
+                @Override
+                public void onPrepareLoad(Drawable placeHolderDrawable) {
+                    // N/A
+                }
+
+            };
+        }
+
+        RequestCreator request = Picasso.get().load( url );
+
+        final int bitmapWidth = floorPlan.getBitmapWidth();
+        final int bitmapHeight = floorPlan.getBitmapHeight();
+
+        if (bitmapHeight > MAX_DIMENSION) {
+            request.resize(0, MAX_DIMENSION);
+        } else if (bitmapWidth > MAX_DIMENSION) {
+            request.resize(MAX_DIMENSION, 0);
+        }
+
+        request.into(mLoadTarget);
+    }
+
+
+
+    private void  setupGroundOverlay(IAFloorPlan floorPlan, Bitmap bitmap) {
+
+
+        if (mGroundOverlay != null) {
+            mGroundOverlay.remove();
+        }
+
+        if (mMap != null) {
+            BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(bitmap);
+            IALatLng iaLatLng = floorPlan.getCenter();
+            LatLng center = new LatLng(iaLatLng.latitude, iaLatLng.longitude);
+            GroundOverlayOptions fpOverlay = new GroundOverlayOptions()
+                    .image(bitmapDescriptor)
+                    .zIndex(0.0f)
+                    .position(center, floorPlan.getWidthMeters(), floorPlan.getHeightMeters())
+                    .bearing(floorPlan.getBearing());
+
+            mGroundOverlay =mMap.addGroundOverlay(fpOverlay);
+        }
+    }
 
 
     //If we don’t have any errors, download the image.
@@ -241,38 +324,41 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     }
 
 //floor detection確認樓層
-    private IARegion.Listener mRegionListener = new IARegion.Listener() {
-        IARegion mCurrentFloorPlan = null;
-        @Override
-        public void onEnterRegion(IARegion region) {
-            if(region.getType()==IARegion.TYPE_FLOOR_PLAN)
-            {
-                String TAG="";
-                Log.d(TAG, "Entered " + region.getName());
-                Log.d(TAG, "floor plan ID: " + region.getId());
-                mCurrentFloorPlan = region;
-            }
-            else if (region.getType() == IARegion.TYPE_VENUE) {
-                // triggered when near a new location
-                String TAG="";
-                Log.d(TAG, "Location changed to " + region.getId());
-            }
-
-        }
-
-        @Override
-        public void onExitRegion(IARegion iaRegion) {
-            // leaving a previously entered region
-            if (iaRegion.getType() == IARegion.TYPE_FLOOR_PLAN) {
-                mCurrentFloorPlan = null;
-                // notice that a change of floor plan (e.g., floor change)
-                // is signaled by an exit-enter pair so ending up here
-                // does not yet mean that the device is outside any mapped area
-            }
-        }
-    };
-
-
+//    TODO::
+//    private IARegion.Listener mRegionListener = new IARegion.Listener() {
+//        IARegion mCurrentFloorPlan = null;
+//        @Override
+//        public void onEnterRegion(IARegion region) {
+//            if(region.getType()==IARegion.TYPE_FLOOR_PLAN) {
+//                final String newId = region.getId();
+//                String TAG="Region";
+//                Log.d(TAG, "Entered " + region.getName());
+//                Log.d(TAG, "floor plan ID: " + region.getId());
+//                Log.d( TAG, "onEnterRegion: " + newId);
+//                //     e4c4db63-5ef1-4ae6-ae6b-22e0507a3973
+//
+//                mCurrentFloorPlan = region;
+//                fetchFloorPlan( newId );
+//            }
+//            else if (region.getType() == IARegion.TYPE_VENUE) {
+//                // triggered when near a new location
+//                String TAG="";
+//                Log.d(TAG, "Location changed to " + region.getId());
+//            }
+//
+//        }
+//
+//        @Override
+//        public void onExitRegion(IARegion iaRegion) {
+//            // leaving a previously entered region
+//            if (iaRegion.getType() == IARegion.TYPE_FLOOR_PLAN) {
+//                mCurrentFloorPlan = null;
+//                // notice that a change of floor plan (e.g., floor change)
+//                // is signaled by an exit-enter pair so ending up here
+//                // does not yet mean that the device is outside any mapped area
+//            }
+//        }
+//    };
 
     @Override
     public void onLocationChanged(Location location) {
@@ -286,11 +372,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                     location.getAccuracy());
         }
     }
-
-
-
-
-    @Override
+@Override
     protected void onDestroy() {
         super.onDestroy();
         // remember to clean up after ourselves
@@ -301,14 +383,16 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         }
     }
 
-
+//    TODO::Resume
     @Override
     protected void onResume() {
         super.onResume();
 
         mIALocationManager.requestLocationUpdates(IALocationRequest.create(), mIALocationListener);
+//        mIALocationManager.registerRegionListener(mRegionListener);
 
-        mIALocationManager.registerRegionListener(mRegionListener);
+        fetchFloorPlan( "e4c4db63-5ef1-4ae6-ae6b-22e0507a3973" );
+//                fetchFloorPlan("e4c4db63-5ef1-4ae6-ae6b-22e0507a3973");
 
     }
 
@@ -319,10 +403,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         mIALocationManager.removeLocationUpdates(mListener);
         super.onPause();
         // unregister location & region changes
-
     }
-
-
 
     @Override
     public void onProviderEnabled(String provider) {
@@ -334,10 +415,6 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 
     public void onStatusChanged(String provider, int status, Bundle extras) {
     }
-
-
-
-
     private   void  showLocationCircle(LatLng center, double accuracyRadius) {
        String TAG="LocationCircle";
         if (mCircle == null) {
@@ -505,13 +582,13 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     }
 
 
-    public IARegion.Listener getRegionListener() {
-        return mRegionListener;
-    }
-
-    public void setRegionListener(IARegion.Listener regionListener) {
-        mRegionListener = regionListener;
-    }
+//    public IARegion.Listener getRegionListener() {
+//        return mRegionListener;
+//    }
+//
+//    public void setRegionListener(IARegion.Listener regionListener) {
+//        mRegionListener = regionListener;
+//    }
 }
 
 

@@ -52,8 +52,6 @@ public class Page1Fragment extends Fragment implements OnMapReadyCallback{
             mMapView.getMapAsync( this );
         }
     }
-
-
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -64,4 +62,5 @@ public class Page1Fragment extends Fragment implements OnMapReadyCallback{
         CameraPosition Liberty = CameraPosition.builder().target( new LatLng( 25.0500,121.5595 ) ).zoom(20).bearing(0).tilt(45).build();
         mGoogleMap.animateCamera( CameraUpdateFactory.newCameraPosition( Liberty ) );
     }
+
 }
