@@ -57,7 +57,7 @@ public class Page1Fragment extends Fragment implements OnMapReadyCallback {
         MapsInitializer.initialize( getContext() );
         mGoogleMap = googleMap;
         googleMap.setMapType( GoogleMap.MAP_TYPE_NORMAL );
-        googleMap.addMarker( new MarkerOptions().position( new LatLng( 25.0500,121.5595 ) ).title( "office" ).snippet( "work here" ) );
+//        googleMap.addMarker( new MarkerOptions().position( new LatLng( 25.0500,121.5595 ) ).title( "office" ).snippet( "work here" ) );
         CameraPosition Liberty = CameraPosition.builder().target( new LatLng( 25.0500,121.5595 ) ).zoom(20).bearing(0).tilt(45).build();
         mGoogleMap.animateCamera( CameraUpdateFactory.newCameraPosition( Liberty ) );
 

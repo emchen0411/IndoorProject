@@ -29,6 +29,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
@@ -75,6 +76,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     private IAResourceManager mResourceManager;
 //    private IARegion.Listener mRegionListener;
     private Circle mCircle;
+    private Marker mMarker;
     private IATask mPendingAsyncResult;
     private Integer mFloor;
     private LatLng mLocation;
@@ -191,7 +193,8 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                 Log.d( TAG, "Longitude: " + location.getLongitude() );
                 Log.d( TAG, "Floor number: " + location.getFloorLevel() );
                 showLatLng.setText( "Your current venue:"+location.getLatitude()+","+location.getLongitude() );
-                showLocationCircle( new LatLng( location.getLatitude(),location.getLongitude() ),15.0f );
+//                showLocationCircle( new LatLng( location.getLatitude(),location.getLongitude() ),15.0f );
+
             }
 
             @Override
@@ -376,9 +379,8 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
             Log.d(TAG, "new LocationService location received with coordinates: " + location.getLatitude()
                     + "," + location.getLongitude());
 
-            showLocationCircle(
-                    new LatLng(location.getLatitude(), location.getLongitude()),
-                    location.getAccuracy());
+                showLocationMarker( location );
+
         }
     }
 
@@ -400,10 +402,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 
         mIALocationManager.requestLocationUpdates(IALocationRequest.create(), mIALocationListener);
 //        mIALocationManager.registerRegionListener(mRegionListener);
-
-
 //                fetchFloorPlan("e4c4db63-5ef1-4ae6-ae6b-22e0507a3973");
-
     }
 
     @Override
@@ -425,24 +424,23 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 
     public void onStatusChanged(String provider, int status, Bundle extras) {
     }
-    private void  showLocationCircle(LatLng center, double accuracyRadius) {
-       String TAG="LocationCircle";
-        if (mCircle == null) {
-            // location can received before map is initialized, ignoring those updates
-            if (mMap != null) {
-                mCircle = mMap.addCircle(new CircleOptions()
-                        .center(center)
-                        .radius(accuracyRadius)
-                        .fillColor(Color.argb(97, 93, 185, 139)) //定位點
-                        .strokeColor(Color.argb(200, 190, 93, 90))//定位點圓周
-                        .zIndex(1.0f)
-                        .visible(true)
-                        .strokeWidth(1.0f));
-            }
+
+    private void showLocationMarker(Location location)
+    {
+
+        String TAG="Location Marker";
+        if (mMarker == null) {
+            mMarker = mMap.addMarker( new MarkerOptions()
+                    .position( new LatLng( location.getLatitude(),location.getLongitude() ) )
+                    .title( "here" ) );
+         // location can received before map is initialized, ignoring those updates
+
         } else {
             // move existing markers position to received location
-            mCircle.setCenter(center);
-            mCircle.setRadius(accuracyRadius);
+            mMarker.remove();
+            mMarker = mMap.addMarker( new MarkerOptions()
+                    .position( new LatLng( location.getLatitude(),location.getLongitude() ) )
+                    .title( "here" ) );
             Log.d( TAG,"你的位置:" );
         }
 
@@ -478,7 +476,8 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
             updateRoute();
 
             if (mShowIndoorLocation) {
-                showLocationCircle(center, location.getAccuracy());
+//                showLocationCircle(center, location.getAccuracy());
+
             }
 
             // our camera position needs updating if location has significantly changed
