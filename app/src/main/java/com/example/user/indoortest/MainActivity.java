@@ -1,12 +1,12 @@
 package com.example.user.indoortest;
 
 import android.Manifest;
-import android.app.Fragment;
 import android.content.Context;
 import android.content.pm.PackageManager;
 
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
@@ -14,10 +14,7 @@ import android.location.LocationListener;
 import android.os.Bundle;
 import android.os.Looper;
 
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
 
 import android.util.Log;
@@ -29,6 +26,7 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.GroundOverlayOptions;
@@ -69,23 +67,14 @@ import com.squareup.picasso.Target;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 
 import android.widget.TextView;
-
-
-
 import java.io.InputStream;
-
-
-
-public class MainActivity extends AppCompatActivity implements  LocationListener {
+public class MainActivity extends AppCompatActivity implements  LocationListener, OnMapReadyCallback {
 
     private IALocationManager mIALocationManager;
     private IALocationListener mIALocationListener;
     private IAResourceManager mResourceManager;
 //    private IARegion.Listener mRegionListener;
-
     private Circle mCircle;
-
-
     private IATask mPendingAsyncResult;
     private Integer mFloor;
     private LatLng mLocation;
@@ -112,7 +101,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     private android.app.FragmentManager fmgr;
     private android.app.FragmentTransaction fragmentTransaction;
     private ViewGroup container;
-    private Fragment Page1Fragment;
+    private Page1Fragment Page1Fragment;
     private Target mLoadTarget;
     private int MAX_DIMENSION=2048;
 
@@ -163,9 +152,11 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         //取得container，作為容器使用
         container=(ViewGroup)findViewById( R.id.container );
         //取得FragmentManager物件實體
-        fmgr=getFragmentManager();
+        fmgr = getFragmentManager();
         //建立1個Fragment物件實體
-        Page1Fragment=new Page1Fragment();
+        Page1Fragment = new Page1Fragment();
+//        取得Fragment的map
+
         //取得交易物件
         fragmentTransaction=fmgr.beginTransaction();
         //初始加入第一頁，並與container結合
@@ -176,7 +167,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 
     public void changeToPage1(View view)
     {
-    fragmentTransaction=fmgr.beginTransaction();
+    fragmentTransaction = fmgr.beginTransaction();
     fragmentTransaction.replace( R.id.container,Page1Fragment );
     fragmentTransaction.commit();
     }
@@ -190,8 +181,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     }
 
     private void setupListener() {
-        mIALocationListener = new IALocationListener()
- {
+        mIALocationListener = new IALocationListenerSupport() {
 
             // Called when the location has changed.
             @Override
@@ -294,27 +284,46 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 
 
 
+//    private void  setupGroundOverlay(IAFloorPlan floorPlan, Bitmap bitmap) {
+//        if (mGroundOverlay != null) {
+//            mGroundOverlay.remove();
+//        }
+//
+//        if (mMap != null) {
+//            BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(bitmap);
+//            IALatLng iaLatLng = floorPlan.getCenter();
+//            LatLng center = new LatLng(iaLatLng.latitude, iaLatLng.longitude);
+//            GroundOverlayOptions fpOverlay = new GroundOverlayOptions()
+//                    .image(bitmapDescriptor)
+//                    .zIndex(0.0f)
+//                    .position(center, floorPlan.getWidthMeters(), floorPlan.getHeightMeters())
+//                    .bearing(floorPlan.getBearing());
+//
+//            mGroundOverlay = mMap.addGroundOverlay(fpOverlay);
+//        }
+//    }
+
     private void  setupGroundOverlay(IAFloorPlan floorPlan, Bitmap bitmap) {
-
-
+        LatLng MapPosition = new LatLng( 25.050051, 121.559551 );
         if (mGroundOverlay != null) {
             mGroundOverlay.remove();
         }
 
-        if (mMap != null) {
-            BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(bitmap);
-            IALatLng iaLatLng = floorPlan.getCenter();
-            LatLng center = new LatLng(iaLatLng.latitude, iaLatLng.longitude);
-            GroundOverlayOptions fpOverlay = new GroundOverlayOptions()
-                    .image(bitmapDescriptor)
-                    .zIndex(0.0f)
-                    .position(center, floorPlan.getWidthMeters(), floorPlan.getHeightMeters())
-                    .bearing(floorPlan.getBearing());
+//        if (mMap != null) {
+//            BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(bitmap);
+//            IALatLng iaLatLng = floorPlan.getCenter();
+//            LatLng center = new LatLng(iaLatLng.latitude, iaLatLng.longitude);
+//            GroundOverlayOptions fpOverlay = new GroundOverlayOptions()
+//                    .image(bitmapDescriptor)
+//                    .zIndex(0.0f)
+//                    .position(center, floorPlan.getWidthMeters(), floorPlan.getHeightMeters())
+//                    .bearing(floorPlan.getBearing());
+        GroundOverlayOptions mapposition = new GroundOverlayOptions()
+                .image( BitmapDescriptorFactory.fromBitmap( bitmap ) )
+                .position( MapPosition,floorPlan.getWidthMeters(), floorPlan.getHeightMeters());
 
-            mGroundOverlay =mMap.addGroundOverlay(fpOverlay);
+            mGroundOverlay = mMap.addGroundOverlay(mapposition);
         }
-    }
-
 
     //If we don’t have any errors, download the image.
     private void handleFloorPlanChange(IAFloorPlan newFloorPlan) {
@@ -372,7 +381,8 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                     location.getAccuracy());
         }
     }
-@Override
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         // remember to clean up after ourselves
@@ -391,7 +401,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         mIALocationManager.requestLocationUpdates(IALocationRequest.create(), mIALocationListener);
 //        mIALocationManager.registerRegionListener(mRegionListener);
 
-        fetchFloorPlan( "e4c4db63-5ef1-4ae6-ae6b-22e0507a3973" );
+
 //                fetchFloorPlan("e4c4db63-5ef1-4ae6-ae6b-22e0507a3973");
 
     }
@@ -415,7 +425,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 
     public void onStatusChanged(String provider, int status, Bundle extras) {
     }
-    private   void  showLocationCircle(LatLng center, double accuracyRadius) {
+    private void  showLocationCircle(LatLng center, double accuracyRadius) {
        String TAG="LocationCircle";
         if (mCircle == null) {
             // location can received before map is initialized, ignoring those updates
@@ -427,7 +437,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                         .strokeColor(Color.argb(200, 190, 93, 90))//定位點圓周
                         .zIndex(1.0f)
                         .visible(true)
-                        .strokeWidth(3.0f));
+                        .strokeWidth(1.0f));
             }
         } else {
             // move existing markers position to received location
@@ -581,6 +591,12 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         mPathCurrent = mMap.addPolyline(optCurrent);
     }
 
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        mMap = googleMap;
+        fetchFloorPlan( "e4c4db63-5ef1-4ae6-ae6b-22e0507a3973" );
+
+    }
 
 //    public IARegion.Listener getRegionListener() {
 //        return mRegionListener;
