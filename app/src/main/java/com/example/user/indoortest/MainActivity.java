@@ -3,7 +3,6 @@ package com.example.user.indoortest;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
-
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -13,18 +12,14 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.os.Bundle;
 import android.os.Looper;
-
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
-
 import android.util.Log;
-
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
-
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.BitmapDescriptor;
@@ -41,22 +36,16 @@ import com.indooratlas.android.sdk.IALocationListener;
 import com.indooratlas.android.sdk.IALocationManager;
 import com.indooratlas.android.sdk.IALocationRequest;
 import android.location.LocationManager;
-
 import com.indooratlas.android.sdk.IARegion;
 import com.indooratlas.android.sdk.resources.IAFloorPlan;
-
 import com.indooratlas.android.sdk.resources.IALatLng;
 import com.indooratlas.android.sdk.resources.IALocationListenerSupport;
 import com.indooratlas.android.sdk.resources.IAResourceManager;
 import com.indooratlas.android.sdk.resources.IAResult;
 import com.indooratlas.android.sdk.resources.IAResultCallback;
 import com.indooratlas.android.sdk.resources.IATask;
-
 import com.indooratlas.android.wayfinding.IARoutingLeg;
-
-
 import com.indooratlas.android.wayfinding.IAWayfinder;
-
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
@@ -64,9 +53,7 @@ import com.google.android.gms.maps.model.GroundOverlay;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.RequestCreator;
 import com.squareup.picasso.Target;
-
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
-
 import android.widget.TextView;
 import java.io.InputStream;
 public class MainActivity extends AppCompatActivity implements  LocationListener, OnMapReadyCallback {
@@ -145,8 +132,6 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         showLatLng=(TextView)findViewById( R.id.showLatLng );
         //終點位置
         showDestination=(TextView)findViewById( R.id.showDestination );
-        //取自indooratlas的 floor plan id
-//        fetchFloorPlan("e4c4db63-5ef1-4ae6-ae6b-22e0507a3973");
 
         //按鈕為開始導航
         startnavigating=(Button)findViewById( R.id.startnavigating );
@@ -165,6 +150,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         fragmentTransaction.add( R.id.container,Page1Fragment);
         //實現動作程序
         fragmentTransaction.commit();
+
     }
 
     public void changeToPage1(View view)
@@ -284,43 +270,12 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 
         request.into(mLoadTarget);
     }
-
-
-
-//    private void  setupGroundOverlay(IAFloorPlan floorPlan, Bitmap bitmap) {
-//        if (mGroundOverlay != null) {
-//            mGroundOverlay.remove();
-//        }
-//
-//        if (mMap != null) {
-//            BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(bitmap);
-//            IALatLng iaLatLng = floorPlan.getCenter();
-//            LatLng center = new LatLng(iaLatLng.latitude, iaLatLng.longitude);
-//            GroundOverlayOptions fpOverlay = new GroundOverlayOptions()
-//                    .image(bitmapDescriptor)
-//                    .zIndex(0.0f)
-//                    .position(center, floorPlan.getWidthMeters(), floorPlan.getHeightMeters())
-//                    .bearing(floorPlan.getBearing());
-//
-//            mGroundOverlay = mMap.addGroundOverlay(fpOverlay);
-//        }
-//    }
-
     private void  setupGroundOverlay(IAFloorPlan floorPlan, Bitmap bitmap) {
         LatLng MapPosition = new LatLng( 25.050051, 121.559551 );
         if (mGroundOverlay != null) {
             mGroundOverlay.remove();
         }
 
-//        if (mMap != null) {
-//            BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(bitmap);
-//            IALatLng iaLatLng = floorPlan.getCenter();
-//            LatLng center = new LatLng(iaLatLng.latitude, iaLatLng.longitude);
-//            GroundOverlayOptions fpOverlay = new GroundOverlayOptions()
-//                    .image(bitmapDescriptor)
-//                    .zIndex(0.0f)
-//                    .position(center, floorPlan.getWidthMeters(), floorPlan.getHeightMeters())
-//                    .bearing(floorPlan.getBearing());
         GroundOverlayOptions mapposition = new GroundOverlayOptions()
                 .image( BitmapDescriptorFactory.fromBitmap( bitmap ) )
                 .position( MapPosition,floorPlan.getWidthMeters(), floorPlan.getHeightMeters());
@@ -334,43 +289,6 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                 .load(newFloorPlan.getUrl())
                 .into(mFloorPlanImage);
     }
-
-//floor detection確認樓層
-//    TODO::
-//    private IARegion.Listener mRegionListener = new IARegion.Listener() {
-//        IARegion mCurrentFloorPlan = null;
-//        @Override
-//        public void onEnterRegion(IARegion region) {
-//            if(region.getType()==IARegion.TYPE_FLOOR_PLAN) {
-//                final String newId = region.getId();
-//                String TAG="Region";
-//                Log.d(TAG, "Entered " + region.getName());
-//                Log.d(TAG, "floor plan ID: " + region.getId());
-//                Log.d( TAG, "onEnterRegion: " + newId);
-//                //     e4c4db63-5ef1-4ae6-ae6b-22e0507a3973
-//
-//                mCurrentFloorPlan = region;
-//                fetchFloorPlan( newId );
-//            }
-//            else if (region.getType() == IARegion.TYPE_VENUE) {
-//                // triggered when near a new location
-//                String TAG="";
-//                Log.d(TAG, "Location changed to " + region.getId());
-//            }
-//
-//        }
-//
-//        @Override
-//        public void onExitRegion(IARegion iaRegion) {
-//            // leaving a previously entered region
-//            if (iaRegion.getType() == IARegion.TYPE_FLOOR_PLAN) {
-//                mCurrentFloorPlan = null;
-//                // notice that a change of floor plan (e.g., floor change)
-//                // is signaled by an exit-enter pair so ending up here
-//                // does not yet mean that the device is outside any mapped area
-//            }
-//        }
-//    };
 
     @Override
     public void onLocationChanged(Location location) {
@@ -429,6 +347,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     {
 
         String TAG="Location Marker";
+        Log.d( TAG, String.valueOf( "判斷Marker是不是null"+mMarker==null ) );
         if (mMarker == null) {
             mMarker = mMap.addMarker( new MarkerOptions()
                     .position( new LatLng( location.getLatitude(),location.getLongitude() ) )
@@ -511,27 +430,6 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 
         }
 
-        public void onMapClick(LatLng point) {
-            if (mMap != null) {
-
-                mDestination = point;
-                if (mDestinationMarker == null) {
-                    mDestinationMarker = mMap.addMarker(new MarkerOptions()
-                            .position(point)
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
-                } else {
-                    mDestinationMarker.setPosition(point);
-                }
-                if (mWayfinder != null) {
-                    mWayfinder.setDestination(point.latitude, point.longitude, mFloor);
-                }
-                final String TAG="設立終點";
-                Log.d(TAG, "Set destination: (" + mDestination.latitude + ", " +
-                        mDestination.longitude + "), floor=" + mFloor);
-
-                updateRoute();
-            }
-        }
 
         private void updateRoute() {
             if (mLocation == null || mDestination == null || mWayfinder == null) {
@@ -594,7 +492,32 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         fetchFloorPlan( "e4c4db63-5ef1-4ae6-ae6b-22e0507a3973" );
+        // 設置MapClick事件
 
+        googleMap.setOnMapClickListener( new GoogleMap.OnMapClickListener() {
+            @Override
+            public void onMapClick(LatLng latLng) {
+                android.util.Log.i("onMapClick", "destination has been chosen!");
+              String TAG="destination";
+                Log.d( TAG, String.valueOf( "判斷DestinationMarker是不是null"+mDestinationMarker==null ) );
+                if (mDestinationMarker == null) {
+                    mDestinationMarker = mMap.addMarker( new MarkerOptions()
+                            .position( new LatLng( latLng.latitude,latLng.longitude ) )
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                            .title( "destination" ) );
+                    // location can received before map is initialized, ignoring those updates
+                } else {
+                    // move existing markers position to received location
+                    mDestinationMarker.remove();
+                    mDestinationMarker = mMap.addMarker( new MarkerOptions()
+                            .position( new LatLng( latLng.latitude,latLng.longitude ) )
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                            .title( "destination" ) );
+                    Log.d( TAG,"你的位置:" );
+                }
+            showDestination.setText( "Here's yor destination: "+latLng.latitude+","+latLng.longitude );
+            }
+        } );
     }
 
 //    public IARegion.Listener getRegionListener() {

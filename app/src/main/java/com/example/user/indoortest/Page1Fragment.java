@@ -53,7 +53,7 @@ public class Page1Fragment extends Fragment implements OnMapReadyCallback {
     }
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
-    public void onMapReady(GoogleMap googleMap) {
+    public void onMapReady(final GoogleMap googleMap) {
         MapsInitializer.initialize( getContext() );
         mGoogleMap = googleMap;
         googleMap.setMapType( GoogleMap.MAP_TYPE_NORMAL );
@@ -63,6 +63,7 @@ public class Page1Fragment extends Fragment implements OnMapReadyCallback {
 
         ((OnMapReadyCallback) getActivity()).onMapReady( googleMap );
     }
+
 
     public GoogleMap getGoogleMap() {
         return mGoogleMap;
