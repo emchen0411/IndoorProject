@@ -15,6 +15,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -57,14 +58,11 @@ public class Page1Fragment extends Fragment implements OnMapReadyCallback {
         MapsInitializer.initialize( getContext() );
         mGoogleMap = googleMap;
         googleMap.setMapType( GoogleMap.MAP_TYPE_NORMAL );
-//        googleMap.addMarker( new MarkerOptions().position( new LatLng( 25.0500,121.5595 ) ).title( "office" ).snippet( "work here" ) );
-        CameraPosition Liberty = CameraPosition.builder().target( new LatLng( 25.0500,121.5595 ) ).zoom(20).bearing(0).tilt(45).build();
+//        googleMap.addMarker( new MarkerOptions().position( new LatLng( 25.04999999,121.55950000 ) ).title( "office" ).snippet( "work here" ).icon( BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)) );
+        CameraPosition Liberty = CameraPosition.builder().target( new LatLng( 25.0500854,121.5594848 ) ).zoom(20).bearing(0).tilt(45).build();
         mGoogleMap.animateCamera( CameraUpdateFactory.newCameraPosition( Liberty ) );
-
         ((OnMapReadyCallback) getActivity()).onMapReady( googleMap );
     }
-
-
     public GoogleMap getGoogleMap() {
         return mGoogleMap;
     }

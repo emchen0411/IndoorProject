@@ -31,6 +31,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.wearable.LargeAssetApi;
 import com.indooratlas.android.sdk.IALocation;
 import com.indooratlas.android.sdk.IALocationListener;
 import com.indooratlas.android.sdk.IALocationManager;
@@ -45,6 +46,7 @@ import com.indooratlas.android.sdk.resources.IAResult;
 import com.indooratlas.android.sdk.resources.IAResultCallback;
 import com.indooratlas.android.sdk.resources.IATask;
 import com.indooratlas.android.wayfinding.IARoutingLeg;
+import com.indooratlas.android.wayfinding.IARoutingPoint;
 import com.indooratlas.android.wayfinding.IAWayfinder;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.Circle;
@@ -55,13 +57,15 @@ import com.squareup.picasso.RequestCreator;
 import com.squareup.picasso.Target;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 import android.widget.TextView;
+
+import java.io.IOException;
 import java.io.InputStream;
 public class MainActivity extends AppCompatActivity implements  LocationListener, OnMapReadyCallback {
 
     private IALocationManager mIALocationManager;
     private IALocationListener mIALocationListener;
     private IAResourceManager mResourceManager;
-//    private IARegion.Listener mRegionListener;
+    //    private IARegion.Listener mRegionListener;
     private Circle mCircle;
     private Marker mMarker;
     private IATask mPendingAsyncResult;
@@ -69,7 +73,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     private LatLng mLocation;
     private IAWayfinder mWayfinder;
     private LatLng center;
-//    private Target mLoadTarget;
+    //    private Target mLoadTarget;
     private IARegion mOverlayFloorPlan = null;
     private GroundOverlay mGroundOverlay = null;
     private static final int MY_PERMISSION_ACCESS_FINE_LOCATION = 2048;
@@ -81,8 +85,10 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     private IARoutingLeg[] mCurrentRoute;
     private GoogleMap mMap;
     private IALocationManager mLocationManager;
+    private IAWayfinder wayfinder;
     private Polyline mPath;
     private Polyline mPathCurrent;
+    private Polyline mPolyline;
     private Button startnavigating;
     private TextView showLatLng;
     private TextView showDestination;
@@ -92,33 +98,35 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     private ViewGroup container;
     private Page1Fragment Page1Fragment;
     private Target mLoadTarget;
-    private int MAX_DIMENSION=2048;
+    private int MAX_DIMENSION = 2048;
+    private Bundle extras;
 
 
     //顯示座標、樓層
     private void startListeningPlatformLocations() {
-        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        if (locationManager != null && (ActivityCompat.checkSelfPermission(this, ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)) {
+        LocationManager locationManager = (LocationManager) getSystemService( Context.LOCATION_SERVICE );
+        if (locationManager != null && (ActivityCompat.checkSelfPermission( this, ACCESS_FINE_LOCATION ) == PackageManager.PERMISSION_GRANTED)) {
 
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this );
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, this );
+            locationManager.requestLocationUpdates( LocationManager.GPS_PROVIDER, 0, 0, this );
+            locationManager.requestLocationUpdates( LocationManager.NETWORK_PROVIDER, 0, 0, this );
         }
     }
 
-
-
-
     protected void onCreate(Bundle savedInstanceState) {
         //定期登錄使用者的位置
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        super.onCreate( savedInstanceState );
+        setContentView( R.layout.activity_main );
         // prevent the screen going to sleep while app is on foreground避免手機進入待機模式
-        findViewById(android.R.id.content).setKeepScreenOn(true);
-        mIALocationManager = IALocationManager.create(MainActivity.this);
-        mResourceManager = IAResourceManager.create(MainActivity.this);
+        findViewById( android.R.id.content ).setKeepScreenOn( true );
+        mIALocationManager = IALocationManager.create( MainActivity.this );
+        mResourceManager = IAResourceManager.create( MainActivity.this );
         startListeningPlatformLocations();
-        mFloorPlanImage = (ImageView) findViewById(R.id.image);
+        mFloorPlanImage = (ImageView) findViewById( R.id.image );
         setupListener();
+        mLocationManager = IALocationManager.create( this, extras );
+        String graphJson = loadJSONFromAsset( this, "wayfinding-graph.json" );
+        wayfinder = IAWayfinder.create( this, graphJson );
+
 //        mIALocationManager.registerRegionListener(mRegionListener);
         final int CODE_PERMISSIONS = 1;
         String[] neededPermissions = {
@@ -127,50 +135,59 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                 //讓 API 使用 WiFi 或手機基地台訊號資料（或兩者）來判斷裝置的位置。
                 Manifest.permission.ACCESS_COARSE_LOCATION
         };
-        ActivityCompat.requestPermissions( MainActivity.this, neededPermissions, CODE_PERMISSIONS);
+        ActivityCompat.requestPermissions( MainActivity.this, neededPermissions, CODE_PERMISSIONS );
         //當前位置
-        showLatLng=(TextView)findViewById( R.id.showLatLng );
+        showLatLng = (TextView) findViewById( R.id.showLatLng );
         //終點位置
-        showDestination=(TextView)findViewById( R.id.showDestination );
-
+        showDestination = (TextView) findViewById( R.id.showDestination );
         //按鈕為開始導航
-        startnavigating=(Button)findViewById( R.id.startnavigating );
-
+        startnavigating = (Button) findViewById( R.id.startnavigating );
         //取得container，作為容器使用
-        container=(ViewGroup)findViewById( R.id.container );
+        container = (ViewGroup) findViewById( R.id.container );
         //取得FragmentManager物件實體
         fmgr = getFragmentManager();
         //建立1個Fragment物件實體
         Page1Fragment = new Page1Fragment();
-//        取得Fragment的map
-
         //取得交易物件
-        fragmentTransaction=fmgr.beginTransaction();
+        fragmentTransaction = fmgr.beginTransaction();
         //初始加入第一頁，並與container結合
-        fragmentTransaction.add( R.id.container,Page1Fragment);
+        fragmentTransaction.add( R.id.container, Page1Fragment );
         //實現動作程序
         fragmentTransaction.commit();
 
     }
 
-    public void changeToPage1(View view)
-    {
-    fragmentTransaction = fmgr.beginTransaction();
-    fragmentTransaction.replace( R.id.container,Page1Fragment );
-    fragmentTransaction.commit();
+    public String loadJSONFromAsset(Context context, String fileName) {
+        String json = null;
+        try {
+            InputStream is = context.getAssets().open( fileName );
+            int size = is.available();
+            byte[] buffer = new byte[size];
+            is.read( buffer );
+            is.close();
+            json = new String( buffer, "UTF-8" );
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            return null;
+        }
+        return json;
+    }
+
+    public void changeToPage1(View view) {
+        fragmentTransaction = fmgr.beginTransaction();
+        fragmentTransaction.replace( R.id.container, Page1Fragment );
+        fragmentTransaction.commit();
     }
 
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
+        super.onRequestPermissionsResult( requestCode, permissions, grantResults );
         //Handle if any of the permissions are denied, in grantResults
     }
 
     private void setupListener() {
         mIALocationListener = new IALocationListenerSupport() {
-
             // Called when the location has changed.
             @Override
             public void onLocationChanged(IALocation location) {
@@ -178,9 +195,7 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                 Log.d( TAG, "Latitude: " + location.getLatitude() );
                 Log.d( TAG, "Longitude: " + location.getLongitude() );
                 Log.d( TAG, "Floor number: " + location.getFloorLevel() );
-                showLatLng.setText( "Your current venue:"+location.getLatitude()+","+location.getLongitude() );
-//                showLocationCircle( new LatLng( location.getLatitude(),location.getLongitude() ),15.0f );
-
+                showLatLng.setText( "Your current venue:" + location.getLatitude() + "," + location.getLongitude() );
             }
 
             @Override
@@ -188,7 +203,6 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                 String TAG = "Status";
                 Log.d( TAG, "onStatusChanged: 被呼叫了" );
                 Log.d( TAG, "onStatusChanged: " );
-
             }
         };
 
@@ -196,31 +210,29 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 
     private void fetchFloorPlan(String id) {
         // Cancel pending operation, if any
-
         if (mPendingAsyncResult != null && !mPendingAsyncResult.isCancelled()) {
             mPendingAsyncResult.cancel();
         }
 
-        mPendingAsyncResult = mResourceManager.fetchFloorPlanWithId(id);
+        mPendingAsyncResult = mResourceManager.fetchFloorPlanWithId( id );
         if (mPendingAsyncResult != null) {
-            mPendingAsyncResult.setCallback(new IAResultCallback<IAFloorPlan>() {
+            mPendingAsyncResult.setCallback( new IAResultCallback <IAFloorPlan>() {
                 @Override
-                public void onResult(IAResult<IAFloorPlan> result) {
-                    final String TAG="fetchFloorPlan";
-                    Log.d(TAG, " 下載地圖"+result);
-
+                public void onResult(IAResult <IAFloorPlan> result) {
+                    final String TAG = "fetchFloorPlan";
+                    Log.d( TAG, " 下載地圖" + result );
                     if (result.isSuccess()) {
-                        fetchFloorPlanBitmap(result.getResult());
+                        fetchFloorPlanBitmap( result.getResult() );
                     } else {
                         // do something with error
-                        Log.d( TAG, "onResult: " + "loading floor plan failed: " + result.getError());
+                        Log.d( TAG, "onResult: " + "loading floor plan failed: " + result.getError() );
                         Toast.makeText( MainActivity.this,
-                "loading floor plan failed: " + result.getError(), Toast.LENGTH_LONG)
-                .show();
+                                "loading floor plan failed: " + result.getError(), Toast.LENGTH_LONG )
+                                .show();
                     }
                 }
-            }, Looper.getMainLooper()); // deliver callbacks in main thread
-                    }
+            }, Looper.getMainLooper() ); // deliver callbacks in main thread
+        }
     }
 
     /**
@@ -235,16 +247,16 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 
                 @Override
                 public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
-                    String TAG="BitmapLoaded";
-                    Log.d(TAG, "地圖下載中 " + bitmap.getWidth() + "x"
-                            + bitmap.getHeight());
-                    setupGroundOverlay(floorPlan, bitmap);
+                    String TAG = "BitmapLoaded";
+                    Log.d( TAG, "地圖下載中 " + bitmap.getWidth() + "x"
+                            + bitmap.getHeight() );
+                    setupGroundOverlay( floorPlan, bitmap );
                 }
 
                 @Override
                 public void onBitmapFailed(Exception e, Drawable errorDrawable) {
                     Toast.makeText( MainActivity.this,
-                            "Failed to load bitmap " , Toast.LENGTH_LONG)
+                            "Failed to load bitmap ", Toast.LENGTH_LONG )
                             .show();
                     mOverlayFloorPlan = null;
                 }
@@ -263,42 +275,48 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         final int bitmapHeight = floorPlan.getBitmapHeight();
 
         if (bitmapHeight > MAX_DIMENSION) {
-            request.resize(0, MAX_DIMENSION);
+            request.resize( 0, MAX_DIMENSION );
         } else if (bitmapWidth > MAX_DIMENSION) {
-            request.resize(MAX_DIMENSION, 0);
+            request.resize( MAX_DIMENSION, 0 );
         }
 
-        request.into(mLoadTarget);
+        request.into( mLoadTarget );
     }
-    private void  setupGroundOverlay(IAFloorPlan floorPlan, Bitmap bitmap) {
-        LatLng MapPosition = new LatLng( 25.050051, 121.559551 );
+
+    private void setupGroundOverlay(IAFloorPlan floorPlan, Bitmap bitmap) {
+//        LatLng MapPosition = new LatLng( 25.0499593, 121.5593166357556 );
+        IALatLng iaLatLng = floorPlan.getTopRight();
+        String TAG = "中心座標";
+        Log.d( TAG, "中心座標是:" + iaLatLng.latitude + "," + iaLatLng.longitude );
+        LatLng MapPosition = new LatLng( iaLatLng.latitude, iaLatLng.longitude );
         if (mGroundOverlay != null) {
             mGroundOverlay.remove();
         }
 
         GroundOverlayOptions mapposition = new GroundOverlayOptions()
                 .image( BitmapDescriptorFactory.fromBitmap( bitmap ) )
-                .position( MapPosition,floorPlan.getWidthMeters(), floorPlan.getHeightMeters());
+                .zIndex( 0.0f )
+                .position( MapPosition, floorPlan.getWidthMeters(), floorPlan.getHeightMeters() );
 
-            mGroundOverlay = mMap.addGroundOverlay(mapposition);
-        }
+        mGroundOverlay = mMap.addGroundOverlay( mapposition );
+    }
 
     //If we don’t have any errors, download the image.
     private void handleFloorPlanChange(IAFloorPlan newFloorPlan) {
         Picasso.get()
-                .load(newFloorPlan.getUrl())
-                .into(mFloorPlanImage);
+                .load( newFloorPlan.getUrl() )
+                .into( mFloorPlanImage );
     }
 
     @Override
     public void onLocationChanged(Location location) {
         if (!mShowIndoorLocation) {
-            final String TAG="onLocationChanged";
-            Log.d(TAG, "new LocationService location received with coordinates: " + location.getLatitude()
-                    + "," + location.getLongitude());
+            final String TAG = "onLocationChanged";
+            Log.d( TAG, "new LocationService location received with coordinates: " + location.getLatitude()
+                    + "," + location.getLongitude() );
 
-                showLocationMarker( location );
-
+            showLocationMarker( location );
+            wayfinder.setLocation( location.getLatitude(), location.getLongitude(), 2 );
         }
     }
 
@@ -313,21 +331,20 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         }
     }
 
-//    TODO::Resume
+    //    TODO::Resume
     @Override
     protected void onResume() {
         super.onResume();
 
-        mIALocationManager.requestLocationUpdates(IALocationRequest.create(), mIALocationListener);
+        mIALocationManager.requestLocationUpdates( IALocationRequest.create(), mIALocationListener );
 //        mIALocationManager.registerRegionListener(mRegionListener);
 //                fetchFloorPlan("e4c4db63-5ef1-4ae6-ae6b-22e0507a3973");
     }
 
     @Override
-    protected void onPause()
-    {
-        mIALocationManager.removeLocationUpdates(mIALocationListener);
-        mIALocationManager.removeLocationUpdates(mListener);
+    protected void onPause() {
+        mIALocationManager.removeLocationUpdates( mIALocationListener );
+        mIALocationManager.removeLocationUpdates( mListener );
         super.onPause();
         // unregister location & region changes
     }
@@ -343,24 +360,21 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
     public void onStatusChanged(String provider, int status, Bundle extras) {
     }
 
-    private void showLocationMarker(Location location)
-    {
-
-        String TAG="Location Marker";
-        Log.d( TAG, String.valueOf( "判斷Marker是不是null"+mMarker==null ) );
+    private void showLocationMarker(Location location) {
+        String TAG = "Location Marker";
+        Log.d( TAG, String.valueOf( "判斷Marker是不是null" + mMarker == null ) );
         if (mMarker == null) {
             mMarker = mMap.addMarker( new MarkerOptions()
-                    .position( new LatLng( location.getLatitude(),location.getLongitude() ) )
+                    .position( new LatLng( location.getLatitude(), location.getLongitude() ) )
                     .title( "here" ) );
-         // location can received before map is initialized, ignoring those updates
-
+            // location can received before map is initialized, ignoring those updates
         } else {
             // move existing markers position to received location
             mMarker.remove();
             mMarker = mMap.addMarker( new MarkerOptions()
-                    .position( new LatLng( location.getLatitude(),location.getLongitude() ) )
+                    .position( new LatLng( location.getLatitude(), location.getLongitude() ) )
                     .title( "here" ) );
-            Log.d( TAG,"你的位置:" );
+            Log.d( TAG, "你的位置:" );
         }
 
     }
@@ -376,19 +390,19 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
          */
         @Override
         public void onLocationChanged(IALocation location) {
-            final String TAG="onLocationChanged";
-            Log.d(TAG, "new location received with coordinates: " + location.getLatitude()
-                    + "," + location.getLongitude());
+            final String TAG = "onLocationChanged";
+            Log.d( TAG, "new location received with coordinates: " + location.getLatitude()
+                    + "," + location.getLongitude() );
 
             if (mMap == null) {
                 // location received before map is initialized, ignoring update here
                 return;
             }
 
-            final LatLng center = new LatLng(location.getLatitude(), location.getLongitude());
+            final LatLng center = new LatLng( location.getLatitude(), location.getLongitude() );
 
             mFloor = location.getFloorLevel();
-            mLocation = new LatLng(location.getLatitude(), location.getLongitude());
+            mLocation = new LatLng( location.getLatitude(), location.getLongitude() );
             if (mWayfinder != null) {
                 mWayfinder.setLocation(mLocation.latitude, mLocation.longitude, mFloor);
             }
@@ -398,45 +412,25 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
 //                showLocationCircle(center, location.getAccuracy());
 
             }
-
             // our camera position needs updating if location has significantly changed
             if (mCameraPositionNeedsUpdating) {
-                mMap.animateCamera( CameraUpdateFactory.newLatLngZoom(center, 17.5f));
+                mMap.animateCamera( CameraUpdateFactory.newLatLngZoom( center, 17.5f ) );
                 mCameraPositionNeedsUpdating = false;
             }
-        };
+        }
 
+        ;
 
         /**
          * Load "wayfinding_graph.json" from raw resources folder of the app module
          * @return
          */
-
-
-        private String loadGraphJSON() {
-            try {
-                Resources res = getResources();
-                int resourceIdentifier = res.getIdentifier("wayfinding_graph", "raw", getPackageName());
-                InputStream in_s = res.openRawResource(resourceIdentifier);
-
-                byte[] b = new byte[in_s.available()];
-                in_s.read(b);
-                return new String(b);
-            } catch (Exception e) {
-                final String TAG="下載路徑";
-                Log.e(TAG, "Could not find wayfinding_graph.json from raw resources folder");
-                return null;
-            }
-
-        }
-
-
         private void updateRoute() {
             if (mLocation == null || mDestination == null || mWayfinder == null) {
                 return;
             }
-            final String TAG="路徑改變";
-            Log.d(TAG, "Updating the wayfinding route");
+            final String TAG = "路徑改變";
+            Log.d( TAG, "Updating the wayfinding route" );
 
             mCurrentRoute = mWayfinder.getRoute();
             if (mCurrentRoute == null || mCurrentRoute.length == 0) {
@@ -447,8 +441,9 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
                 // Remove old path if any
                 clearOldPath();
             }
-            visualizeRoute(mCurrentRoute);
+            visualizeRoute( mCurrentRoute );
         }
+
         /**
          * Clear the visualizations for the wayfinding paths
          */
@@ -458,8 +453,10 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         }
 
     };
+
     /**
      * Visualize the IndoorAtlas Wayfinding path on top of the Google Maps.
+     *
      * @param legs Array of IARoutingLeg objects returned from IAWayfinder.getRoute()
      */
     private void visualizeRoute(IARoutingLeg[] legs) {
@@ -469,23 +466,23 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         PolylineOptions optCurrent = new PolylineOptions();
 
         for (IARoutingLeg leg : legs) {
-            opt.add(new LatLng(leg.getBegin().getLatitude(), leg.getBegin().getLongitude()));
+            opt.add( new LatLng( leg.getBegin().getLatitude(), leg.getBegin().getLongitude() ) );
             if (leg.getBegin().getFloor() == mFloor && leg.getEnd().getFloor() == mFloor) {
                 optCurrent.add(
-                        new LatLng(leg.getBegin().getLatitude(), leg.getBegin().getLongitude()));
+                        new LatLng( leg.getBegin().getLatitude(), leg.getBegin().getLongitude() ) );
                 optCurrent.add(
-                        new LatLng(leg.getEnd().getLatitude(), leg.getEnd().getLongitude()));
+                        new LatLng( leg.getEnd().getLatitude(), leg.getEnd().getLongitude() ) );
             }
         }
-        optCurrent.color(Color.RED);
+        optCurrent.color( Color.RED );
         if (legs.length > 0) {
-            IARoutingLeg leg = legs[legs.length-1];
-            opt.add(new LatLng(leg.getEnd().getLatitude(), leg.getEnd().getLongitude()));
+            IARoutingLeg leg = legs[legs.length - 1];
+            opt.add( new LatLng( leg.getEnd().getLatitude(), leg.getEnd().getLongitude() ) );
         }
         // Here wayfinding path in different floor than current location is visualized in blue and
         // path in current floor is visualized in red
-        mPath = mMap.addPolyline(opt);
-        mPathCurrent = mMap.addPolyline(optCurrent);
+        mPath = mMap.addPolyline( opt );
+        mPathCurrent = mMap.addPolyline( optCurrent );
     }
 
     @Override
@@ -497,38 +494,76 @@ public class MainActivity extends AppCompatActivity implements  LocationListener
         googleMap.setOnMapClickListener( new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
-                android.util.Log.i("onMapClick", "destination has been chosen!");
-              String TAG="destination";
-                Log.d( TAG, String.valueOf( "判斷DestinationMarker是不是null"+mDestinationMarker==null ) );
+                android.util.Log.i( "onMapClick", "destination has been chosen!" );
+                String TAG = "destination";
+                Log.d( TAG, String.valueOf( "判斷DestinationMarker是不是null" + mDestinationMarker == null ) );
                 if (mDestinationMarker == null) {
                     mDestinationMarker = mMap.addMarker( new MarkerOptions()
-                            .position( new LatLng( latLng.latitude,latLng.longitude ) )
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                            .position( new LatLng( latLng.latitude, latLng.longitude ) )
+                            .icon( BitmapDescriptorFactory.defaultMarker( BitmapDescriptorFactory.HUE_BLUE ) )
                             .title( "destination" ) );
                     // location can received before map is initialized, ignoring those updates
                 } else {
                     // move existing markers position to received location
                     mDestinationMarker.remove();
                     mDestinationMarker = mMap.addMarker( new MarkerOptions()
-                            .position( new LatLng( latLng.latitude,latLng.longitude ) )
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                            .position( new LatLng( latLng.latitude, latLng.longitude ) )
+                            .icon( BitmapDescriptorFactory.defaultMarker( BitmapDescriptorFactory.HUE_BLUE ) )
                             .title( "destination" ) );
-                    Log.d( TAG,"你的位置:" );
+                    Log.d( TAG, "你的位置:" );
                 }
-            showDestination.setText( "Here's yor destination: "+latLng.latitude+","+latLng.longitude );
-            }
-        } );
+                showDestination.setText( "Here's yor destination: " + latLng.latitude + "," + latLng.longitude );
+                //wayfinder
+                wayfinder.setDestination( latLng.latitude, latLng.longitude, 2 );
+                IARoutingLeg[] route = wayfinder.getRoute();
+                String uploadgrahJson = loadGraphJSON();
+
+                for (int i = 0; i < route.length; i++) {
+                    IARoutingPoint begin = route[i].getBegin();
+                    IARoutingPoint end = route[i].getEnd();
+                    if(mPolyline == null)
+                    {
+                        mPolyline = mMap.addPolyline( new PolylineOptions()
+                                .add( new LatLng( begin.getLatitude(),begin.getLongitude()),new LatLng(end.getLatitude(),end.getLongitude()))
+                                .width( 25 )
+                                .color( Color.YELLOW )
+                                .geodesic( true )
+                        );
+                    }
+                    else
+                    {
+                        mPolyline.remove();
+                        mPolyline = mMap.addPolyline( new PolylineOptions()
+                                .add( new LatLng( begin.getLatitude(),begin.getLongitude()),new LatLng(end.getLatitude(),end.getLongitude()))
+                                .width( 25 )
+                                .color( Color.YELLOW )
+                                .geodesic( true )
+                        );
+                    }
+        }
+
+    }
+        });
     }
 
-//    public IARegion.Listener getRegionListener() {
-//        return mRegionListener;
-//    }
-//
-//    public void setRegionListener(IARegion.Listener regionListener) {
-//        mRegionListener = regionListener;
-//    }
+    private String loadGraphJSON() {
+        try {
+            Resources res = getResources();
+            int resourceIdentifier = res.getIdentifier( "wayfinding-graph", "raw", getPackageName() );
+            InputStream in_s = res.openRawResource( resourceIdentifier );
+
+            byte[] b = new byte[in_s.available()];
+            in_s.read( b );
+            return new String( b );
+        } catch (Exception e) {
+            final String TAG = "下載路徑";
+            Log.e( TAG, "Could not find wayfinding_graph.json from raw resources folder" );
+            return null;
+        }
+    }
+
+
+
 }
-
-
 
 
